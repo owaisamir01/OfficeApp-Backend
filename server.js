@@ -310,44 +310,99 @@ app.post('/deletebill', function (req, res) {
   });
 });
 
+// app.post('/getstats', function (req, res) {
+//   const { usertoken } = req.body;
+
+//   if (!usertoken) {
+//     return res.status(400).json({ message: 'No usertoken provided.' });
+//   }
+
+//   // Step 1: Validate usertoken and fetch stats directly from bills table
+//   con.query(
+//     'SELECT ' +
+//       'COUNT(DISTINCT bill_id) as totalBills, ' +
+//       'SUM(total_bill) as totalAmount, ' +
+//       'AVG(total_bill) as averageAmount, ' +
+//       'MAX(total_bill) as highestBill, ' +
+//       '(SELECT shop_name FROM bills WHERE usertoken = ? GROUP BY shop_name ORDER BY COUNT(*) DESC LIMIT 1) as frequentShop, ' +
+//       '(SELECT COUNT(*) FROM bill_items bi JOIN bills b2 ON bi.bill_id = b2.bill_id WHERE b2.usertoken = ?) as totalItems ' +
+//     'FROM bills ' +
+//     'WHERE usertoken = ?',
+//     [usertoken, usertoken, usertoken],
+//     function (error, statsResult) {
+//       if (error) {
+//         console.error("Error fetching stats: ", error);
+//         return res.status(500).json({ message: 'Failed to fetch stats.' });
+//       }
+
+//       const stats = {
+//         totalBills: statsResult[0].totalBills || 0,
+//         totalAmount: parseFloat(statsResult[0].totalAmount || 0).toFixed(2),
+//         averageAmount: parseFloat(statsResult[0].averageAmount || 0).toFixed(2),
+//         highestBill: parseFloat(statsResult[0].highestBill || 0).toFixed(2),
+//         frequentShop: statsResult[0].frequentShop || 'N/A',
+//         totalItems: statsResult[0].totalItems || 0,
+//       };
+//       res.status(200).json({ stats });
+//     }
+//   );
+// });
+
 app.post('/getstats', function (req, res) {
-  const { usertoken } = req.body;
+  const { usertoken, date } = req.body;
 
   if (!usertoken) {
     return res.status(400).json({ message: 'No usertoken provided.' });
   }
 
-  // Step 1: Validate usertoken and fetch stats directly from bills table
-  con.query(
-    'SELECT ' +
-      'COUNT(DISTINCT bill_id) as totalBills, ' +
-      'SUM(total_bill) as totalAmount, ' +
-      'AVG(total_bill) as averageAmount, ' +
-      'MAX(total_bill) as highestBill, ' +
-      '(SELECT shop_name FROM bills WHERE usertoken = ? GROUP BY shop_name ORDER BY COUNT(*) DESC LIMIT 1) as frequentShop, ' +
-      '(SELECT COUNT(*) FROM bill_items bi JOIN bills b2 ON bi.bill_id = b2.bill_id WHERE b2.usertoken = ?) as totalItems ' +
-    'FROM bills ' +
-    'WHERE usertoken = ?',
-    [usertoken, usertoken, usertoken],
-    function (error, statsResult) {
-      if (error) {
-        console.error("Error fetching stats: ", error);
-        return res.status(500).json({ message: 'Failed to fetch stats.' });
-      }
+  // Prepare the base query with date filter
+  let query = `
+    SELECT 
+      COUNT(DISTINCT bill_id) as totalBills, 
+      SUM(total_bill) as totalAmount, 
+      AVG(total_bill) as averageAmount, 
+      MAX(total_bill) as highestBill, 
+      (SELECT shop_name FROM bills WHERE usertoken = ? AND DATE(created_at) = ? GROUP BY shop_name ORDER BY COUNT(*) DESC LIMIT 1) as frequentShop, 
+      (SELECT COUNT(*) FROM bill_items bi JOIN bills b2 ON bi.bill_id = b2.bill_id WHERE b2.usertoken = ? AND DATE(b2.created_at) = ?) as totalItems 
+    FROM bills 
+    WHERE usertoken = ? AND DATE(created_at) = ?
+  `;
 
-      const stats = {
-        totalBills: statsResult[0].totalBills || 0,
-        totalAmount: parseFloat(statsResult[0].totalAmount || 0).toFixed(2),
-        averageAmount: parseFloat(statsResult[0].averageAmount || 0).toFixed(2),
-        highestBill: parseFloat(statsResult[0].highestBill || 0).toFixed(2),
-        frequentShop: statsResult[0].frequentShop || 'N/A',
-        totalItems: statsResult[0].totalItems || 0,
-      };
-      res.status(200).json({ stats });
+  const queryParams = [usertoken, date, usertoken, date, usertoken, date];
+
+  // If no date is provided, remove the date filter (optional fallback)
+  if (!date) {
+    query = `
+      SELECT 
+        COUNT(DISTINCT bill_id) as totalBills, 
+        SUM(total_bill) as totalAmount, 
+        AVG(total_bill) as averageAmount, 
+        MAX(total_bill) as highestBill, 
+        (SELECT shop_name FROM bills WHERE usertoken = ? GROUP BY shop_name ORDER BY COUNT(*) DESC LIMIT 1) as frequentShop, 
+        (SELECT COUNT(*) FROM bill_items bi JOIN bills b2 ON bi.bill_id = b2.bill_id WHERE b2.usertoken = ?) as totalItems 
+      FROM bills 
+      WHERE usertoken = ?
+    `;
+    queryParams = [usertoken, usertoken, usertoken];
+  }
+
+  con.query(query, queryParams, function (error, statsResult) {
+    if (error) {
+      console.error("Error fetching stats: ", error);
+      return res.status(500).json({ message: 'Failed to fetch stats.' });
     }
-  );
-});
 
+    const stats = {
+      totalBills: statsResult[0].totalBills || 0,
+      totalAmount: parseFloat(statsResult[0].totalAmount || 0).toFixed(2),
+      averageAmount: parseFloat(statsResult[0].averageAmount || 0).toFixed(2),
+      highestBill: parseFloat(statsResult[0].highestBill || 0).toFixed(2),
+      frequentShop: statsResult[0].frequentShop || 'N/A',
+      totalItems: statsResult[0].totalItems || 0,
+    };
+    res.status(200).json({ stats });
+  });
+});
 app.get('/getitems', function (req, res) {
   const query = 'SELECT item_name, price,id FROM items';
   con.query(query, function (error, results) {
