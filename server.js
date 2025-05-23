@@ -9,10 +9,10 @@ app.use(bodyParser.json());
 
 // Creating a MySQL connection.
 var con = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "officeapp" // Add your database name here
+  host: "sql12.freesqldatabase.com",
+  user: "sql12780712",
+  password: "HFi1u4g1j3",
+  database: "sql12780712" // Add your database name here
 });
 
 con.connect(function(err) {
