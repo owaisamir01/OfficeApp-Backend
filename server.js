@@ -6,18 +6,28 @@ const app = express();
 const cors = require('cors');
 app.use(cors());
 app.use(bodyParser.json());
+const util = require("util");
 
 // Creating a MySQL connection.
-var con = mysql.createConnection({
+const pool = mysql.createPool({
   host: "sql12.freesqldatabase.com",
   user: "sql12780712",
   password: "HFi1u4g1j3",
   database: "sql12780712" // Add your database name here
 });
+pool.query = util.promisify(pool.query);
+// con.connect(function(err) {
+//   if (err) throw err;
+//   console.log("Connected to the database!");
+// });
 
-con.connect(function(err) {
-  if (err) throw err;
-  console.log("Connected to the database!");
+pool.getConnection((err, connection) => {
+  if (err) {
+      console.error('Error connecting to the database:', err.message);
+  } else {
+      console.log('Connected to the MySQL database successfully!');
+      connection.release(); // Release the connection after checking
+  }
 });
 
 app.post('/adduser', function (req, res) {
