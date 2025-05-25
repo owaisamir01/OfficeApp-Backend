@@ -36,7 +36,7 @@ app.post('/adduser', function (req, res) {
   
     // Check if email already exists
     const checkQuery = 'SELECT * FROM users WHERE email = ?';
-    con.query(checkQuery, [email], function (checkError, checkResults) {
+    pool.query(checkQuery, [email], function (checkError, checkResults) {
       if (checkError) {
         console.error("Error checking existing user: ", checkError);
         res.status(500).send("An error occurred while checking the user.");
@@ -55,7 +55,7 @@ app.post('/adduser', function (req, res) {
   
       // Insert new user with token
       const insertQuery = 'INSERT INTO users (uname, number, email, password, designation, companyname, usertoken) VALUES (?, ?, ?, ?, ?, ?, ?)';
-      con.query(insertQuery, [name, number, email, password, designation, companyname, userToken], function (insertError, insertResults) {
+      pool.query(insertQuery, [name, number, email, password, designation, companyname, userToken], function (insertError, insertResults) {
         if (insertError) {
           console.error("Error inserting user: ", insertError);
           res.status(500).send("An error occurred while inserting the user.");
@@ -79,7 +79,7 @@ app.post('/login', function (req, res) {
   // Construct the SQL query to find the user by email
   const query = 'SELECT * FROM users WHERE email = ?';
   // Executing the MySQL query to check if the user exists
-  con.query(query, [email], function (error, results) {
+  pool.query(query, [email], function (error, results) {
     if (error) {
       console.error("Error checking user: ", error);
       res.status(500).send("An error occurred while checking the user.");
@@ -121,7 +121,7 @@ app.post('/getuser', function (req, res) {
 
   const query = 'SELECT * FROM users WHERE usertoken = ?';
 
-  con.query(query, [usertoken], function (error, results) {
+  pool.query(query, [usertoken], function (error, results) {
     if (error) {
       console.error("Error fetching user: ", error);
       res.status(500).json({
@@ -152,7 +152,7 @@ app.post('/addpost', function (req, res) {
   const query = 'INSERT INTO posts (userid, postbody) VALUES (?, ?)';
 
   // Execute the MySQL query to insert data
-  con.query(query, [userid, post], function (error, results) {
+  pool.query(query, [userid, post], function (error, results) {
     if (error) {
       console.error("Error inserting post: ", error);
       res.status(500).send("An error occurred while inserting the post.");
@@ -179,7 +179,7 @@ app.post('/savebill', function (req, res) {
   const billQuery = 'INSERT INTO bills (usertoken, date, area, shop_name, total_bill) VALUES (?, ?, ?, ?, ?)';
 
   // Insert the bill into the 'bills' table
-  con.query(billQuery, [usertoken, date, area, shopName, totalBill], function (error, billResult) {
+  pool.query(billQuery, [usertoken, date, area, shopName, totalBill], function (error, billResult) {
     if (error) {
       console.error("Error inserting bill: ", error);
       return res.status(500).json({ message: 'Failed to save bill.' });
@@ -193,7 +193,7 @@ app.post('/savebill', function (req, res) {
     // Insert each item into the 'bill_items' table
     let itemsInserted = 0;
     items.forEach(item => {
-      con.query(itemQuery, [billId, item.name, item.quantity, item.price, item.total], function (itemError) {
+      pool.query(itemQuery, [billId, item.name, item.quantity, item.price, item.total], function (itemError) {
         if (itemError) {
           console.error("Error inserting bill item: ", itemError);
           return res.status(500).json({ message: 'Failed to save bill items.' });
@@ -219,7 +219,7 @@ app.post('/getbills', function (req, res) {
   }
 
   const query = 'SELECT * FROM bills WHERE usertoken = ?';
-  con.query(query, [usertoken], function (error, results) {
+  pool.query(query, [usertoken], function (error, results) {
     if (error) {
       console.error("Error fetching bills: ", error);
       return res.status(500).json({ message: 'Failed to fetch bills.' });
@@ -238,7 +238,7 @@ app.post('/getbillitems', function (req, res) {
   }
 
   const query = 'SELECT * FROM bill_items WHERE bill_id = ?';
-  con.query(query, [bill_id], function (error, results) {
+  pool.query(query, [bill_id], function (error, results) {
     if (error) {
       console.error("Error fetching bill items: ", error);
       return res.status(500).json({ message: 'Failed to fetch bill items.' });
@@ -257,7 +257,7 @@ app.post('/updatebill', function (req, res) {
   }
 
   // Update the bill in the bills table
-  con.query(
+  pool.query(
     'UPDATE bills SET date = ?, area = ?, shop_name = ?, total_bill = ? WHERE bill_id = ?',
     [date, area, shop_name, total_bill, bill_id],
     function (error) {
@@ -274,7 +274,7 @@ app.post('/updatebill', function (req, res) {
           console.error("Missing item_id for item:", item);
           return res.status(400).json({ message: 'Missing item_id in one or more items.' });
         }
-        con.query(
+        pool.query(
           itemQuery,
           [item.item_name, item.quantity, item.price, item.total, item.item_id, bill_id],
           function (itemError) {
@@ -302,14 +302,14 @@ app.post('/deletebill', function (req, res) {
   }
 
   // First, delete all items associated with the bill from the bill_items table
-  con.query('DELETE FROM bill_items WHERE bill_id = ?', [bill_id], function (error) {
+  pool.query('DELETE FROM bill_items WHERE bill_id = ?', [bill_id], function (error) {
     if (error) {
       console.error("Error deleting bill items: ", error);
       return res.status(500).json({ message: 'Failed to delete bill items.' });
     }
 
     // Then, delete the bill from the bills table
-    con.query('DELETE FROM bills WHERE bill_id = ?', [bill_id], function (error) {
+    pool.query('DELETE FROM bills WHERE bill_id = ?', [bill_id], function (error) {
       if (error) {
         console.error("Error deleting bill: ", error);
         return res.status(500).json({ message: 'Failed to delete bill.' });
@@ -396,7 +396,7 @@ app.post('/getstats', function (req, res) {
     queryParams = [usertoken, usertoken, usertoken];
   }
 
-  con.query(query, queryParams, function (error, statsResult) {
+  pool.query(query, queryParams, function (error, statsResult) {
     if (error) {
       console.error("Error fetching stats: ", error);
       return res.status(500).json({ message: 'Failed to fetch stats.' });
@@ -415,7 +415,7 @@ app.post('/getstats', function (req, res) {
 });
 app.get('/getitems', function (req, res) {
   const query = 'SELECT item_name, price,id FROM items';
-  con.query(query, function (error, results) {
+  pool.query(query, function (error, results) {
     if (error) {
       console.error("Error fetching items: ", error);
       return res.status(500).json({ message: 'Failed to fetch items.' });
@@ -440,7 +440,7 @@ app.post('/adminlogin', function (req, res) {
   const { email, password } = req.body;
   // Simulate admin database query
   const query = 'SELECT * FROM admins WHERE email = ? AND password = ?';
-  con.query(query, [email, password], function (error, results) {
+  pool.query(query, [email, password], function (error, results) {
     if (error) {
       console.error("Error during admin login: ", error);
       return res.status(500).json({ message: 'Failed to login as admin.' });
@@ -459,7 +459,7 @@ app.post('/adminlogin', function (req, res) {
 
 app.post('/getalluserswithtokens', function (req, res) {
   const query = 'SELECT uname, usertoken FROM users'; // Adjust table name as per your schema
-  con.query(query, function (error, results) {
+  pool.query(query, function (error, results) {
     if (error) {
       console.error("Error fetching users: ", error);
       return res.status(500).json({ message: 'Failed to fetch users.' });
@@ -472,7 +472,7 @@ app.post('/getalluserswithtokens', function (req, res) {
 app.post('/additem', function (req, res) {
   const { item_name, price } = req.body;
   const query = 'INSERT INTO items (item_name, price) VALUES (?, ?)';
-  con.query(query, [item_name, parseFloat(price)], function (error, results) {
+  pool.query(query, [item_name, parseFloat(price)], function (error, results) {
     if (error) {
       console.error("Error adding item: ", error);
       return res.status(500).json({ message: 'Failed to add item.' });
@@ -486,7 +486,7 @@ app.post('/deleteitem', function (req, res) {
     return res.status(400).json({ message: 'No item ID provided.' });
   }
   const query = 'DELETE FROM items WHERE id = ?';
-  con.query(query, [id], function (error, results) {
+  pool.query(query, [id], function (error, results) {
     if (error) {
       console.error("Error deleting item: ", error);
       return res.status(500).json({ message: 'Failed to delete item.' });
